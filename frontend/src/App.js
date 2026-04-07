@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Page,
   Navbar,
@@ -25,19 +25,12 @@ function App() {
 
   const [results, setResults] = useState([]);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleSearch = async () => {
+  const fetchResults = async (queryString = "") => {
     try {
       setError("");
-
-      let query = [];
-
-      if (q) query.push(`q=${q}`);
-      if (category) query.push(`category=${category}`);
-      if (minPrice) query.push(`minPrice=${minPrice}`);
-      if (maxPrice) query.push(`maxPrice=${maxPrice}`);
-
-      const queryString = query.join("&");
+      setLoading(true);
 
       const res = await fetch(
         `${process.env.REACT_APP_API_URL}/search?${queryString}`
@@ -54,8 +47,25 @@ function App() {
       setResults(data);
     } catch (err) {
       setError("Something went wrong");
+    } finally {
+      setLoading(false);
     }
   };
+
+  const handleSearch = () => {
+    let query = [];
+
+    if (q) query.push(`q=${q}`);
+    if (category) query.push(`category=${category}`);
+    if (minPrice) query.push(`minPrice=${minPrice}`);
+    if (maxPrice) query.push(`maxPrice=${maxPrice}`);
+
+    fetchResults(query.join("&"));
+  };
+
+  useEffect(() => {
+    fetchResults();
+  }, []);
 
   return (
     <Page>
@@ -96,26 +106,30 @@ function App() {
             onChange={(e) => setMaxPrice(e.target.value)}
           />
 
-          <Button onClick={handleSearch}>Search</Button>
+          <Button onClick={handleSearch} disabled={loading}>
+            {loading ? "Searching..." : "Search"}
+          </Button>
         </Sidebar>
 
         <Content>
           {error && <ErrorText>{error}</ErrorText>}
-          
-          {results.length === 0 && !error && (
+
+          {loading ? (
+            <Message>Loading results...</Message>
+          ) : results.length === 0 && !error ? (
             <Message>No results found</Message>
+          ) : (
+            results.map((item) => (
+              <Card key={item.id}>
+                <div>
+                  <ProductName>{item.productName}</ProductName>
+                  <Supplier>{item.supplier}</Supplier>
+                  <p>{item.category}</p>
+                </div>
+                <Price>₹{item.price}</Price>
+              </Card>
+            ))
           )}
-        
-          {results.map((item) => (
-            <Card key={item.id}>
-              <div>
-                <ProductName>{item.productName}</ProductName>
-                <Supplier>{item.supplier}</Supplier>
-                <p>{item.category}</p>
-              </div>
-              <Price>₹{item.price}</Price>
-            </Card>
-          ))}
         </Content>
       </Container>
     </Page>
